@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <numeric>
 #include <algorithm>
+#include <cmath>
 
 using namespace std;
 
@@ -43,11 +44,10 @@ vector<string>& split_string(vector<string>&            result,
 }
 }
 
-svm_classifier::svm_classifier() : model_(0) {
+svm_classifier::svm_classifier() : model_(nullptr) {
     // set some defaults
     param_.svm_type = C_SVC;
-//    param_.svm_type = EPSILON_SVR;
-    param_.kernel_type = RBF;
+    param_.kernel_type = LINEAR;
     param_.degree = 3;
     param_.gamma = 0;	// 1/num_features
     param_.coef0 = 0;
@@ -64,16 +64,16 @@ svm_classifier::svm_classifier() : model_(0) {
 }
 
 svm_classifier::~svm_classifier() {
-    if(model_ != 0) svm_free_and_destroy_model(&model_);
+    if(model_ != nullptr) svm_free_and_destroy_model(&model_);
     svm_destroy_param(&param_);
 }
 
 void svm_classifier::get_samples(const char *filename) {
-    samples_.clear();
     ifstream istr(filename);
     if (!istr.is_open()) {
         throw "Coult not open file";
     }
+    samples_.clear();
     string line;
     while(std::getline(istr, line)) {
         vector<string> fields;
@@ -100,7 +100,7 @@ svm_classifier::load_data(const char* filename) {
     }
 
     labels_.clear(); inputs_.clear(); rows_.clear();
-    int maxindex = 0;
+    unsigned maxindex = 0;
     for_each(begin(samples_), end(samples_), [&maxindex](vector<double>& v){ if (maxindex < v.size()) maxindex = v.size(); });
     --maxindex; // because the first column is actually the labels
 
@@ -113,9 +113,9 @@ svm_classifier::load_data(const char* filename) {
         labels_.push_back(s[0]);
         for (int i = 1; i != s.size(); ++i) {
             if (s[i] == 0) continue;
-            inputs_.push_back(svm_node{ i, s[i] });
+            inputs_.push_back( { i, s[i] } );
         }
-        inputs_.push_back(svm_node {-1, -0.0 }); // index=-1 indicates the end of one vector (see libSVM README)
+        inputs_.push_back( {-1, -0.0 } ); // index=-1 indicates the end of one vector (see libSVM README)
     }
 
     // update the problem
@@ -127,11 +127,11 @@ svm_classifier::load_data(const char* filename) {
     rows_.push_back(&(*it));
 
     if ((end(inputs_)-1)->index != -1) {
-        cerr << "Warning: possibly corrupted input (last index = " << end(inputs_)->index << ")" << endl;
+        cerr << "Warning: possibly corrupted input (last index = " << (end(inputs_)-1)->index << ")" << endl;
     }
     for (; it != end(inputs_)-1; ++it) {
         if (it->index == -1) {
-            rows_.push_back(&(*(++it))); // pretty cool :)
+            rows_.push_back(&(*(++it)));
         }
     }
     problem_.x = rows_.data();
@@ -141,8 +141,18 @@ svm_classifier::load_data(const char* filename) {
 
 bool
 svm_classifier::load_model(const char *filename) {
+    if (model_ != 0) svm_free_and_destroy_model(&model_);
     model_ = svm_load_model(filename);
     return true; // if the model was loaded successfully
+}
+
+double
+svm_classifier::predict(const svm_node* x) {
+    if (model_ == nullptr) {
+        cerr << "Model is null" << endl;
+        return log(-1);
+    }
+    return svm_predict(model_, x);
 }
 
 void
@@ -181,4 +191,3 @@ void svm_classifier::cross_validate(int nfold) {
         cout << "Cross validation accuracy = " << acc << endl;
     }
 }
-

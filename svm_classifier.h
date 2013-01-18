@@ -12,8 +12,10 @@ public:
     bool load_data(const char* filename);
     bool load_model(const char* filename);
     void train();
+    double predict(const svm_node *x);
     void cross_validate(int nfold);
     const svm_model* model() const { return model_; }
+    svm_parameter& parameters() { return param_; }
     const svm_problem& problem() const { return problem_; }
     const std::vector<std::vector<double> >& samples() const { return samples_; }
 

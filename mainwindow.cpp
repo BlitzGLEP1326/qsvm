@@ -1,9 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-#include <QFileDialog>
-#include <QList>
-
 #include <iostream>
 #include <vector>
 
@@ -14,24 +11,23 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-
-    classifier = new svm_classifier;
-
+    classifier = std::make_shared<svm_classifier>();
+    ui->plotArea->setClassifier(classifier.get());
     ui->textEdit->setReadOnly(true);
     ui->textEdit->setFont(QFont("Consolas"));
+
 
     ui->splitter->setStretchFactor(0, 1);
     ui->splitter->setStretchFactor(1, 0);
 
     // map signals to slots
-    connect(this, SIGNAL(input_data_loaded()), this, SLOT(on_input_data_loaded()));
-    connect(ui->action_Quit, SIGNAL(triggered()), qApp, SLOT(quit()));
+    connect(this, &MainWindow::inputDataLoaded, this, &MainWindow::on_inputDataLoaded);
+    connect(ui->action_Quit, &QAction::triggered, &QApplication::quit);
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
-    delete classifier;
 }
 
 void MainWindow::on_action_LoadModel_triggered()
@@ -41,47 +37,73 @@ void MainWindow::on_action_LoadModel_triggered()
     QString selectedFile;
     if (dialog.exec()) {
         selectedFile = dialog.selectedFiles()[0];
-        if (classifier->load_data(selectedFile.toStdString().data())) {
-            emit input_data_loaded();
-            if (classifier->load_model(selectedFile.toStdString().c_str())) {
-                // do something with the model
-            }
+        if (classifier->load_model(selectedFile.toStdString().c_str())) {
+            ui->plotArea->update();
+        }
+    }
+}
+
+void MainWindow::validateParameters() {
+    // update parameters with values from the interface
+    bool ok = false;
+    if (ui->svmParamCLineEdit->isEnabled()) {
+        double param_C = ui->svmParamCLineEdit->text().toDouble(&ok);
+        if (!ok) {
+            // handle conversion error
+            ui->textEdit->append("Could not convert C param value. Using default.");
+            param_C = 1.0;
+        } else {
+            classifier->parameters().C = param_C;
+            ui->svmParamCLineEdit->setText(QString::number(param_C));
+        }
+    }
+    if (ui->svmParamDegreeLineEdit->isEnabled()) {
+        int param_Degree = ui->svmParamDegreeLineEdit->text().toInt(&ok);
+        if (!ok) {
+            // handle conversion error
+            ui->textEdit->append("Could not convert Degree param value. Using default.");
+            param_Degree = 3;
+        } else {
+            classifier->parameters().degree = param_Degree;
+            ui->svmParamDegreeLineEdit->setText(QString::number(param_Degree));
         }
     }
 }
 
 void MainWindow::on_action_TrainModel_triggered() {
+    this->validateParameters();
+
     classifier->train();
     auto model = classifier->model();
+    // update console log
     ui->textEdit->append("Training complete.");
     ui->textEdit->append("Number of support vectors: " + QString::number(model->l));
     for (int i = 0; i != model->nr_class; ++i) {
         ui->textEdit->append("\t" + QString::number(model->nSV[i]) + " in Class " + QString::number(i+1));
     }
+    // update plot
+    ui->plotArea->update();
 }
 
-void MainWindow::on_loadTrainDataButton_clicked()
-{
-    qDebug() << "Load train data";
+void MainWindow::on_loadTrainDataButton_clicked() {
     QFileDialog dialog(this);
     dialog.setFileMode(QFileDialog::ExistingFile);
     if (dialog.exec()) {
         auto selectedFile = dialog.selectedFiles()[0];
         if (classifier->load_data(selectedFile.toStdString().c_str())) {
-            emit input_data_loaded();
+            emit inputDataLoaded(selectedFile);
         }
     }
 }
 
-void MainWindow::on_input_data_loaded() {
-    ui->textEdit->append("Loaded " + QString::number(classifier->samples().size()) + " samples.");
-    ui->centralWidget->show();
+void MainWindow::on_inputDataLoaded(QString& filename) {
+    ui->textEdit->append("Loaded " + QString::number(classifier->samples().size()) + " samples from " + filename);
     ui->action_TrainModel->setEnabled(true);
 
     ui->hSplitter->show();
 
     updateTable();
-    updatePlot();
+    ui->plotArea->update();
 }
 
 void MainWindow::on_tabWidget_currentChanged(int index) {
@@ -107,7 +129,7 @@ void MainWindow::updateTable() {
         }
     }
     ui->tableWidget->setHorizontalHeaderItem(0, new QTableWidgetItem("Y"));
-    resizeTable();
+    this->resizeTable();
 }
 
 void MainWindow::resizeTable() {
@@ -126,51 +148,25 @@ void MainWindow::resizeTable() {
     ui->hSplitter->setSizes(sizes);
 }
 
-void MainWindow::updatePlot() {
-    auto plot = ui->plotArea;
-    QVector<double> neg_x0, neg_x1; // negative class
-    QVector<double> pos_x0, pos_x1; // positive class
-    auto samples = classifier->samples();
-    for (auto s: samples) {
-        if (s[0] < 0) {
-            neg_x0.append(s[1]);
-            neg_x1.append(s[2]);
-        } else if (s[0] > 0) {
-            pos_x0.append(s[1]);
-            pos_x1.append(s[2]);
-        }
+void MainWindow::on_kernelTypeComboBox_currentIndexChanged(int index) {
+    if (index == POLY) {
+        ui->svmParamDegreeLabel->setEnabled(true);
+        ui->svmParamDegreeLineEdit->setEnabled(true);
+    } else {
+        ui->svmParamDegreeLabel->setEnabled(false);
+        ui->svmParamDegreeLineEdit->setEnabled(false);
     }
-    // plot first class of points in red
-    plot->clearGraphs();
-    QCPGraph* graph;
-    graph = plot->addGraph();
-    graph->setPen(QPen(Qt::red));
-    graph->setLineStyle(QCPGraph::lsNone);
-    graph->setScatterStyle(QCP::ssDisc);
-    graph->setScatterSize(4);
-    graph->setAntialiasedScatters(true);
-    graph->setErrorType(QCPGraph::etValue);
-    graph->setErrorPen(QPen(QColor(180,180,180)));
-    graph->setName("Negative class");
-    graph->setData(neg_x0, neg_x1);
-    // manually scale between [0,1]
-    graph->keyAxis()->setRange(0.0, 1.0);
-    graph->valueAxis()->setRange(0.0, 1.0);
-    // plot second class of points in blue
-    graph = plot->addGraph();
-    graph->setPen(QPen(Qt::blue));
-    graph->setLineStyle(QCPGraph::lsNone);
-    graph->setScatterStyle(QCP::ssDisc);
-    graph->setScatterSize(4);
-    graph->setAntialiasedScatters(true);
-    graph->setErrorType(QCPGraph::etValue);
-    graph->setErrorPen(QPen(QColor(180,180,180)));
-    graph->setName("Positive class");
-    graph->setData(pos_x0, pos_x1);
-    graph->keyAxis()->setRange(0.0, 1.0);
-    graph->valueAxis()->setRange(0.0, 1.0);
+    classifier->parameters().kernel_type = index;
+}
 
-    plot->legend->setVisible(true);
-    plot->setupFullAxesBox();
-    plot->replot();
+void MainWindow::on_svmTypeComboBox_currentIndexChanged(int index)
+{
+    if (index == C_SVC || index == EPSILON_SVR || index == NU_SVR) {
+        ui->svmParamCLabel->setEnabled(true);
+        ui->svmParamCLineEdit->setEnabled(true);
+    } else {
+        ui->svmParamCLabel->setEnabled(false);
+        ui->svmParamCLineEdit->setEnabled(false);
+    }
+    classifier->parameters().svm_type = index;
 }

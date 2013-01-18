@@ -45,9 +45,15 @@
              <rect>
               <x>10</x>
               <y>0</y>
-              <width>165</width>
+              <width>300</width>
               <height>66</height>
              </rect>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>300</width>
+              <height>16777215</height>
+             </size>
             </property>
             <property name="frameShape">
              <enum>QFrame::StyledPanel</enum>
@@ -56,47 +62,15 @@
              <enum>QFrame::Raised</enum>
             </property>
             <layout class="QGridLayout" name="gridLayout_6">
-             <property name="margin">
-              <number>0</number>
-             </property>
-             <item row="1" column="1">
-              <widget class="QComboBox" name="comboBox_2">
-               <item>
-                <property name="text">
-                 <string>Linear</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Polynomial</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Radial base</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Sigmoid</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Precomputed</string>
-                </property>
-               </item>
-              </widget>
-             </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="label_2">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label">
                <property name="text">
-                <string>Kernel</string>
+                <string>SVM Type</string>
                </property>
               </widget>
              </item>
              <item row="0" column="1">
-              <widget class="QComboBox" name="comboBox">
+              <widget class="QComboBox" name="svmTypeComboBox">
                <item>
                 <property name="text">
                  <string>C_SVC</string>
@@ -124,10 +98,82 @@
                </item>
               </widget>
              </item>
-             <item row="0" column="0">
-              <widget class="QLabel" name="label">
+             <item row="0" column="2">
+              <widget class="QLabel" name="svmParamCLabel">
+               <property name="enabled">
+                <bool>true</bool>
+               </property>
                <property name="text">
-                <string>SVM Type</string>
+                <string>C</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="3">
+              <widget class="QLineEdit" name="svmParamCLineEdit">
+               <property name="enabled">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_2">
+               <property name="text">
+                <string>Kernel</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QComboBox" name="kernelTypeComboBox">
+               <item>
+                <property name="text">
+                 <string>Linear</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Polynomial</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Radial base</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Sigmoid</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Precomputed</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+             <item row="1" column="2">
+              <widget class="QLabel" name="svmParamDegreeLabel">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="text">
+                <string>Degree</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="3">
+              <widget class="QLineEdit" name="svmParamDegreeLineEdit">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="text">
+                <string/>
                </property>
               </widget>
              </item>
@@ -211,7 +257,7 @@
                   </property>
                   <layout class="QGridLayout" name="gridLayout">
                    <item row="0" column="0">
-                    <widget class="QCustomPlot" name="plotArea" native="true"/>
+                    <widget class="QSVMPlot" name="plotArea" native="true"/>
                    </item>
                   </layout>
                  </widget>
@@ -300,9 +346,9 @@
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
   <customwidget>
-   <class>QCustomPlot</class>
+   <class>QSVMPlot</class>
    <extends>QWidget</extends>
-   <header>qcustomplot.h</header>
+   <header>qsvmplot.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

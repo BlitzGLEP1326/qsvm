@@ -27,21 +27,10 @@
 #ifndef QCUSTOMPLOT_H
 #define QCUSTOMPLOT_H
 
-#include <QObject>
-#include <QWidget>
-#include <QPainter>
-#include <QPaintEvent>
-#include <QPixmap>
-#include <QVector>
-#include <QString>
-#include <QPrinter>
-#include <QDateTime>
-#include <QMultiMap>
-#include <QFlags>
-#include <QDebug>
-#include <QVector2D>
-#include <QStack>
-#include <qmath.h>
+#include <QtCore/QtCore>
+#include <QtPrintSupport/QtPrintSupport>
+#include <QtWidgets/QtWidgets>
+#include <QtCore/qmath.h>
 #include <limits>
 
 // decl definitions for shared library compilation/usage:
